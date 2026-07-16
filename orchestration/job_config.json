@@ -1,0 +1,48 @@
+{
+  "name": "pipeline_case_tecnico_rpe",
+  "description": "Orquestra o pipeline Bronze -> Silver -> Gold do case técnico RPE. Cada task depende da anterior ter concluído com sucesso; falhas são reexecutadas automaticamente sem repetir as etapas já concluídas.",
+  "tasks": [
+    {
+      "task_key": "bronze_ingestion",
+      "description": "Ingestão dos CSVs brutos, extração de metadados do nome do arquivo, quarentena de arquivos inválidos.",
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/<seu-usuario>/01_bronze_ingestion"
+      },
+      "max_retries": 2,
+      "min_retry_interval_millis": 60000,
+      "retry_on_timeout": true
+    },
+    {
+      "task_key": "silver_transformation",
+      "description": "Tratamento incremental: deduplicação, tipagem, reconciliação de dimensões incompletas, checagens de qualidade.",
+      "depends_on": [
+        { "task_key": "bronze_ingestion" }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/<seu-usuario>/02_silver_transformation"
+      },
+      "max_retries": 2,
+      "min_retry_interval_millis": 60000,
+      "retry_on_timeout": true
+    },
+    {
+      "task_key": "gold_analytics",
+      "description": "Modelagem Star Schema final e cálculo das 11 métricas analíticas para consumo no dashboard.",
+      "depends_on": [
+        { "task_key": "silver_transformation" }
+      ],
+      "notebook_task": {
+        "notebook_path": "/Workspace/Users/<seu-usuario>/03_gold_analytics"
+      },
+      "max_retries": 2,
+      "min_retry_interval_millis": 60000,
+      "retry_on_timeout": true
+    }
+  ],
+  "notas_de_design": {
+    "dependencia_entre_etapas": "Cada task só inicia após a task anterior (depends_on) ter terminado com status de sucesso. Se a Silver falhar, a Gold não é executada.",
+    "estrategia_de_retry": "max_retries=2 por task, com intervalo mínimo de 60s entre tentativas. Como cada camada persiste seu próprio resultado em Delta antes de a próxima começar, reexecutar uma task falha não repete o trabalho já concluído com sucesso nas tasks anteriores -- apenas a task que falhou (e as que dependem dela) são reprocessadas.",
+    "idempotencia": "A camada Silver usa MERGE com watermark (estratégia incremental), portanto reexecuções não duplicam dados mesmo se uma falha parcial ocorrer no meio do processamento.",
+    "agendamento": "Não configurado neste case (execução sob demanda), mas poderia ser adicionado via bloco 'schedule' com expressão cron, para rodar automaticamente conforme novos arquivos chegassem."
+  }
+}

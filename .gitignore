@@ -1,0 +1,15 @@
+# Databricks
+.databricks/
+
+# Python
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Ambiente
+.env
+*.env.local
+
+# Sistema
+.DS_Store
+Thumbs.db
