@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --navy: #0B1F45;
+      --navy-2: #142A5E;
+      --orange: #FF6A35;
+      --orange-dark: #E5551F;
+      --cream: #F7F5F0;
+      --card: #FFFFFF;
+      --ink: #1A1D29;
+      --muted: #6B7280;
+      --line: #E4E0D6;
+      --success: #1E8E5A;
+      --danger: #C6432B;
+      --radius: 14px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: 'Inter', -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .num { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+
+    /* ---------- Header ---------- */
+    header.top {
+      background: var(--navy);
+      color: white;
+      padding: 22px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    .brand { display: flex; align-items: baseline; gap: 14px; }
+    .brand .mark {
+      font-family: 'Sora', sans-serif;
+      font-weight: 800;
+      font-size: 26px;
+      letter-spacing: 0.5px;
+    }
+    .brand .mark .dot { color: var(--orange); }
+    .brand .subtitle {
+      font-size: 13px;
+      color: #A9B4CC;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+    .header-actions { display: flex; align-items: center; gap: 14px; }
+    .last-updated { font-size: 12px; color: #8B96B3; font-family: 'IBM Plex Mono', monospace; }
+    #btn-refresh {
+      background: var(--orange);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease;
+    }
+    #btn-refresh:hover { background: var(--orange-dark); }
+    #btn-refresh:disabled { opacity: 0.6; cursor: default; }
+    .spin { animation: spin 0.8s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---------- Tabs ---------- */
+    nav.tabs {
+      background: var(--navy-2);
+      display: flex;
+      padding: 0 24px;
+      overflow-x: auto;
+    }
+    nav.tabs button {
+      background: none;
+      border: none;
+      color: #B9C2DA;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
+      font-size: 13.5px;
+      padding: 14px 18px;
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      white-space: nowrap;
+      transition: color 0.15s ease;
+    }
+    nav.tabs button:hover { color: white; }
+    nav.tabs button.active { color: white; border-bottom-color: var(--orange); }
+
+    main { max-width: 1180px; margin: 0 auto; padding: 28px 24px 60px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; animation: fadein 0.25s ease; }
+    @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    section.eyebrow {
+      font-family: 'Sora', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      color: var(--orange-dark);
+      margin: 32px 0 10px;
+    }
+    section.eyebrow:first-child { margin-top: 0; }
+
+    /* ---------- Receipt hero (signature element) ---------- */
+    .receipt {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 28px 30px;
+      max-width: 420px;
+      box-shadow: 0 1px 3px rgba(11,31,69,0.08), 0 10px 30px rgba(11,31,69,0.06);
+      position: relative;
+      border-top: 3px dashed var(--line);
+    }
+    .receipt::before {
+      content: "";
+      position: absolute; top: -3px; left: 0; right: 0; height: 3px;
+      background: repeating-linear-gradient(90deg, var(--navy) 0 8px, transparent 8px 14px);
+    }
+    .receipt-head {
+      text-align: center;
+      font-family: 'Sora', sans-serif;
+      font-weight: 800;
+      font-size: 15px;
+      letter-spacing: 1px;
+      color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .receipt-sub {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 18px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+    .receipt-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      padding: 9px 0;
+      border-bottom: 1px dotted var(--line);
+      font-size: 14px;
+    }
+    .receipt-line:last-of-type { border-bottom: none; }
+    .receipt-line .label { color: var(--muted); font-weight: 500; }
+    .receipt-line .value { font-family: 'IBM Plex Mono', monospace; font-weight: 600; color: var(--navy); }
+    .receipt-line.total { border-top: 2px solid var(--navy); margin-top: 6px; padding-top: 14px; }
+    .receipt-line.total .value { font-size: 18px; color: var(--orange-dark); }
+
+    /* ---------- Cards / grid ---------- */
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      box-shadow: 0 1px 2px rgba(11,31,69,0.06), 0 6px 18px rgba(11,31,69,0.04);
+    }
+    .card h3 {
+      font-family: 'Sora', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--navy);
+      margin: 0 0 14px;
+    }
+    .kpi-value { font-family: 'IBM Plex Mono', monospace; font-size: 28px; font-weight: 600; color: var(--navy); }
+    .kpi-label { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+    th { text-align: left; color: var(--muted); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.4px; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+    td { padding: 9px 8px; border-bottom: 1px solid var(--line); }
+    tr:last-child td { border-bottom: none; }
+    td.num, th.num { text-align: right; font-family: 'IBM Plex Mono', monospace; }
+    .rank { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; background: var(--navy); color: white; font-size: 11px; font-weight: 700; align-items: center; justify-content: center; margin-right: 8px; font-family: 'IBM Plex Mono', monospace; }
+
+    .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+    .badge.orange { background: #FFE7DB; color: var(--orange-dark); }
+    .badge.navy { background: #E4E9F5; color: var(--navy); }
+    .badge.danger { background: #FBE3DE; color: var(--danger); }
+    .badge.success { background: #DFF3E8; color: var(--success); }
+
+    .delta.up { color: var(--success); }
+    .delta.down { color: var(--danger); }
+
+    canvas { max-height: 280px; }
+
+    .alert-card {
+      border-left: 4px solid var(--orange);
+      background: #FFF8F4;
+    }
+    .alert-card .kpi-value { color: var(--orange-dark); }
+
+    .empty-state { text-align: center; color: var(--muted); padding: 40px 0; font-size: 13.5px; }
+
+    #loading-overlay {
+      position: fixed; inset: 0; background: var(--cream);
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      z-index: 999; gap: 14px;
+    }
+    #loading-overlay .mark { font-family: 'Sora', sans-serif; font-weight: 800; font-size: 22px; color: var(--navy); }
+    #loading-overlay .mark .dot { color: var(--orange); }
+    .loader-bar { width: 140px; height: 3px; background: var(--line); border-radius: 3px; overflow: hidden; }
+    .loader-bar::after {
+      content: ""; display: block; width: 40%; height: 100%; background: var(--orange);
+      animation: load 1s ease-in-out infinite;
+    }
+    @keyframes load { 0% { transform: translateX(-100%); } 100% { transform: translateX(350%); } }
+
+    #error-banner {
+      display: none; background: #FBE3DE; color: var(--danger); padding: 14px 20px;
+      border-radius: 10px; margin-bottom: 20px; font-size: 13.5px; font-weight: 500;
+    }
+
+    footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 20px; font-family: 'IBM Plex Mono', monospace; }
+  </style>
+</head>
+<body>
+
+  <div id="loading-overlay">
+    <div class="mark">RPE<span class="dot">.</span></div>
+    <div class="loader-bar"></div>
+    <div style="font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;">carregando dados do Databricks…</div>
+  </div>
+
+  <header class="top">
+    <div class="brand">
+      <div class="mark">RPE<span class="dot">.</span></div>
+      <div class="subtitle">Relatório de Vendas — Case Técnico</div>
+    </div>
+    <div class="header-actions">
+      <span class="last-updated" id="last-updated">—</span>
+      <button id="btn-refresh" onclick="carregarDados()">↻ Atualizar dados</button>
+    </div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="visao-geral">Visão Geral</button>
+    <button class="tab-btn" data-tab="produtos">Produtos</button>
+    <button class="tab-btn" data-tab="vendedores">Vendedores</button>
+    <button class="tab-btn" data-tab="regional">Regional &amp; Qualidade</button>
+  </nav>
+
+  <main>
+    <div id="error-banner"></div>
+
+    <!-- ===================== VISÃO GERAL ===================== -->
+    <div class="tab-panel active" id="tab-visao-geral">
+      <section class="eyebrow">Resumo do período</section>
+      <div class="receipt">
+        <div class="receipt-head">RESUMO DE VENDAS</div>
+        <div class="receipt-sub">TODOS OS VENDEDORES · TODOS OS PERÍODOS</div>
+        <div class="receipt-line">
+          <span class="label">Pedidos processados</span>
+          <span class="value num" id="r-pedidos">—</span>
+        </div>
+        <div class="receipt-line">
+          <span class="label">Ticket médio</span>
+          <span class="value num" id="r-ticket">—</span>
+        </div>
+        <div class="receipt-line">
+          <span class="label">Pedidos cancelados</span>
+          <span class="value num" id="r-cancelados">—</span>
+        </div>
+        <div class="receipt-line total">
+          <span class="label">Receita total</span>
+          <span class="value num" id="r-receita">—</span>
+        </div>
+      </div>
+
+      <section class="eyebrow">Receita por mês</section>
+      <div class="card">
+        <canvas id="chart-receita-mensal"></canvas>
+      </div>
+    </div>
+
+    <!-- ===================== PRODUTOS ===================== -->
+    <div class="tab-panel" id="tab-produtos">
+      <section class="eyebrow">Top 5 produtos por receita</section>
+      <div class="grid-2">
+        <div class="card">
+          <canvas id="chart-top5-produtos-receita"></canvas>
+        </div>
+        <div class="card">
+          <h3>Ranking detalhado</h3>
+          <table id="tabela-top5-produtos-receita"></table>
+        </div>
+      </div>
+
+      <section class="eyebrow">Top 5 produtos por quantidade vendida</section>
+      <div class="card">
+        <table id="tabela-top5-produtos-quantidade"></table>
+      </div>
+    </div>
+
+    <!-- ===================== VENDEDORES ===================== -->
+    <div class="tab-panel" id="tab-vendedores">
+      <section class="eyebrow">Top 5 vendedores por receita</section>
+      <div class="grid-2">
+        <div class="card">
+          <canvas id="chart-top5-vendedores"></canvas>
+        </div>
+        <div class="card">
+          <h3>Recorrentes vs. novos</h3>
+          <table id="tabela-recorrentes-novos"></table>
+        </div>
+      </div>
+
+      <section class="eyebrow">Vendedores inativos (mais de 30 dias sem venda)</section>
+      <div class="card">
+        <table id="tabela-inativos"></table>
+      </div>
+
+      <section class="eyebrow">Vendedores com 3+ meses consecutivos de queda</section>
+      <div class="card">
+        <table id="tabela-quedas"></table>
+      </div>
+
+      <section class="eyebrow">Variação de receita mês a mês, por vendedor</section>
+      <div class="card">
+        <table id="tabela-variacao"></table>
+      </div>
+    </div>
+
+    <!-- ===================== REGIONAL & QUALIDADE ===================== -->
+    <div class="tab-panel" id="tab-regional">
+      <section class="eyebrow">Faturamento por estado</section>
+      <div class="card">
+        <canvas id="chart-estado"></canvas>
+      </div>
+
+      <section class="eyebrow">Qualidade dos dados</section>
+      <div class="grid">
+        <div class="card alert-card">
+          <div class="kpi-value num" id="q-produto-pct">—</div>
+          <div class="kpi-label">das vendas têm produto sem cadastro</div>
+        </div>
+        <div class="card alert-card">
+          <div class="kpi-value num" id="q-vendedor-pct">—</div>
+          <div class="kpi-label">das vendas têm vendedor sem cadastro</div>
+        </div>
+        <div class="card alert-card">
+          <div class="kpi-value num" id="q-receita-nao-cadastrado">—</div>
+          <div class="kpi-label">receita total sem cadastro completo</div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer>RPE · Pipeline Bronze → Silver → Gold em Databricks · Dashboard via Google Apps Script</footer>
+
+  <script>
+    let dados = null;
+    const fmtBRL = (v) => (v == null ? '—' : 'R$ ' + Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const fmtNum = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR'));
+    const fmtPct = (v) => (v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%');
+
+    // ---------- Navegação por abas ----------
+    document.querySelectorAll('.tab-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach((b) => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ---------- Carregamento de dados ----------
+    function carregarDados() {
+      const btn = document.getElementById('btn-refresh');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spin">↻</span> Atualizando…';
+      document.getElementById('error-banner').style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(aoReceberDados)
+        .withFailureHandler(aoFalhar)
+        .getDashboardData();
+    }
+
+    function aoFalhar(erro) {
+      mostrarErro('Falha ao chamar o servidor: ' + erro.message);
+      resetarBotao();
+      document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    function mostrarErro(msg) {
+      const banner = document.getElementById('error-banner');
+      banner.textContent = msg;
+      banner.style.display = 'block';
+    }
+
+    function resetarBotao() {
+      const btn = document.getElementById('btn-refresh');
+      btn.disabled = false;
+      btn.innerHTML = '↻ Atualizar dados';
+    }
+
+    function aoReceberDados(resposta) {
+      resetarBotao();
+      document.getElementById('loading-overlay').style.display = 'none';
+
+      if (!resposta.ok) {
+        mostrarErro('Erro ao consultar o Databricks: ' + resposta.erro);
+        return;
+      }
+
+      dados = resposta;
+      document.getElementById('last-updated').textContent =
+        'Atualizado em ' + new Date(resposta.atualizadoEm).toLocaleString('pt-BR');
+
+      renderVisaoGeral();
+      renderProdutos();
+      renderVendedores();
+      renderRegional();
+    }
+
+    // ---------- Renderização: Visão Geral ----------
+    let chartReceitaMensal = null;
+    function renderVisaoGeral() {
+      const t = dados.ticketMedio;
+      const c = dados.pctCancelados;
+      const receitaTotal = dados.receitaMensal.reduce((s, r) => s + Number(r.receita_total || 0), 0);
+
+      document.getElementById('r-pedidos').textContent = fmtNum(t.qtd_pedidos);
+      document.getElementById('r-ticket').textContent = fmtBRL(t.ticket_medio);
+      document.getElementById('r-cancelados').textContent =
+        fmtNum(c.pedidos_cancelados) + ' (' + fmtPct(c.percentual_cancelados) + ')';
+      document.getElementById('r-receita').textContent = fmtBRL(receitaTotal);
+
+      const ctx = document.getElementById('chart-receita-mensal');
+      const labels = dados.receitaMensal.map((r) => (r.month_name || '').slice(0, 3) + '/' + String(r.year).slice(2));
+      const valores = dados.receitaMensal.map((r) => r.receita_total);
+
+      if (chartReceitaMensal) chartReceitaMensal.destroy();
+      chartReceitaMensal = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Receita',
+            data: valores,
+            backgroundColor: '#FF6A35',
+            borderRadius: 5,
+            maxBarThickness: 36,
+          }],
+        },
+        options: {
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => fmtBRL(ctx.raw) } } },
+          scales: {
+            y: { ticks: { callback: (v) => 'R$ ' + (v / 1000).toFixed(0) + 'k' }, grid: { color: '#E4E0D6' } },
+            x: { grid: { display: false } },
+          },
+        },
+      });
+    }
+
+    // ---------- Renderização: Produtos ----------
+    let chartTop5Produtos = null;
+    function renderProdutos() {
+      const top5r = dados.top5ProdutosReceita;
+
+      const ctx = document.getElementById('chart-top5-produtos-receita');
+      if (chartTop5Produtos) chartTop5Produtos.destroy();
+      chartTop5Produtos = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: top5r.map((p) => p.product_name),
+          datasets: [{ data: top5r.map((p) => p.receita_total), backgroundColor: '#0B1F45', borderRadius: 5 }],
+        },
+        options: {
+          indexAxis: 'y',
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => fmtBRL(ctx.raw) } } },
+          scales: { x: { ticks: { callback: (v) => 'R$ ' + (v / 1000).toFixed(0) + 'k' } } },
+        },
+      });
+
+      renderTabela('tabela-top5-produtos-receita',
+        ['#', 'Produto', 'Categoria', 'Receita'],
+        top5r.map((p, i) => [rankBadge(i), p.product_name, p.category, fmtBRL(p.receita_total)]),
+        [false, false, false, true]);
+
+      renderTabela('tabela-top5-produtos-quantidade',
+        ['#', 'Produto', 'Categoria', 'Quantidade'],
+        dados.top5ProdutosQuantidade.map((p, i) => [rankBadge(i), p.product_name, p.category, fmtNum(p.quantidade_total)]),
+        [false, false, false, true]);
+    }
+
+    // ---------- Renderização: Vendedores ----------
+    let chartTop5Vendedores = null;
+    function renderVendedores() {
+      const top5v = dados.top5VendedoresReceita;
+
+      const ctx = document.getElementById('chart-top5-vendedores');
+      if (chartTop5Vendedores) chartTop5Vendedores.destroy();
+      chartTop5Vendedores = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: top5v.map((v) => v.seller_name),
+          datasets: [{ data: top5v.map((v) => v.receita_total), backgroundColor: '#FF6A35', borderRadius: 5 }],
+        },
+        options: {
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => fmtBRL(ctx.raw) } } },
+          scales: { y: { ticks: { callback: (v) => 'R$ ' + (v / 1000).toFixed(0) + 'k' } } },
+        },
+      });
+
+      renderTabela('tabela-recorrentes-novos',
+        ['Vendedor', 'Meses c/ venda', 'Classificação'],
+        dados.vendedoresRecorrentesNovos.map((v) => [
+          v.seller_name, fmtNum(v.meses_distintos_com_venda),
+          badge(v.classificacao === 'Recorrente' ? 'navy' : 'orange', v.classificacao),
+        ]),
+        [false, true, false]);
+
+      renderTabela('tabela-inativos',
+        ['Vendedor', 'Última venda', 'Dias sem vender', 'Status'],
+        dados.vendedoresInativos.map((v) => {
+          const inativo = Number(v.dias_sem_vender) > 30;
+          return [v.seller_name, v.ultima_venda, fmtNum(v.dias_sem_vender),
+            badge(inativo ? 'danger' : 'success', inativo ? 'Inativo' : 'Ativo')];
+        }),
+        [false, false, true, false]);
+
+      if (dados.quedasConsecutivas.length === 0) {
+        document.getElementById('tabela-quedas').outerHTML =
+          '<div class="empty-state" id="tabela-quedas">Nenhum vendedor com 3+ meses consecutivos de queda no período analisado.</div>';
+      } else {
+        renderTabela('tabela-quedas',
+          ['Vendedor', 'Meses consecutivos em queda', 'Período'],
+          dados.quedasConsecutivas.map((v) => [
+            v.seller_name, badge('danger', fmtNum(v.meses_consecutivos_em_queda) + ' meses'),
+            `${v.mes_inicio}/${v.ano_inicio} → ${v.mes_fim}/${v.ano_fim}`,
+          ]),
+          [false, false, false]);
+      }
+
+      renderTabela('tabela-variacao',
+        ['Vendedor', 'Período', 'Receita', 'Mês anterior', 'Variação'],
+        dados.variacaoMensalVendedor.map((v) => [
+          v.seller_name, `${v.month}/${v.year}`, fmtBRL(v.receita_mes), fmtBRL(v.receita_mes_anterior),
+          v.variacao_percentual == null ? '—' :
+            `<span class="delta ${v.variacao_percentual >= 0 ? 'up' : 'down'}">${v.variacao_percentual >= 0 ? '▲' : '▼'} ${fmtPct(Math.abs(v.variacao_percentual))}</span>`,
+        ]),
+        [false, false, true, true, true]);
+    }
+
+    // ---------- Renderização: Regional & Qualidade ----------
+    let chartEstado = null;
+    function renderRegional() {
+      const ctx = document.getElementById('chart-estado');
+      if (chartEstado) chartEstado.destroy();
+      chartEstado = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: dados.faturamentoEstado.map((e) => e.state),
+          datasets: [{ data: dados.faturamentoEstado.map((e) => e.receita_total), backgroundColor: '#0B1F45', borderRadius: 5, maxBarThickness: 42 }],
+        },
+        options: {
+          plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => fmtBRL(ctx.raw) } } },
+          scales: { y: { ticks: { callback: (v) => 'R$ ' + (v / 1000).toFixed(0) + 'k' } } },
+        },
+      });
+
+      const q = dados.qualidadeDados;
+      document.getElementById('q-produto-pct').textContent = fmtPct(q.pct_vendas_produto_nao_cadastrado);
+      document.getElementById('q-vendedor-pct').textContent = fmtPct(q.pct_vendas_vendedor_nao_cadastrado);
+      document.getElementById('q-receita-nao-cadastrado').textContent =
+        fmtBRL(Number(q.receita_sem_cadastro_completo || 0));
+    }
+
+    // ---------- Helpers de tabela ----------
+    function rankBadge(i) { return `<span class="rank">${i + 1}</span>`; }
+    function badge(cor, texto) { return `<span class="badge ${cor}">${texto}</span>`; }
+
+    function renderTabela(id, headers, linhas, numFlags) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      let html = '<thead><tr>' + headers.map((h, i) => `<th class="${numFlags[i] ? 'num' : ''}">${h}</th>`).join('') + '</tr></thead><tbody>';
+      linhas.forEach((linha) => {
+        html += '<tr>' + linha.map((v, i) => `<td class="${numFlags[i] ? 'num' : ''}">${v}</td>`).join('') + '</tr>';
+      });
+      html += '</tbody>';
+      el.innerHTML = html;
+    }
+
+    // ---------- Início ----------
+    carregarDados();
+  </script>
+</body>
+</html>
