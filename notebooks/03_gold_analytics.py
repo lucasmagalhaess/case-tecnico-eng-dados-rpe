@@ -269,6 +269,58 @@ print(f"Receita de vendas com vendedor não cadastrado: R$ {receita_vendedor_nao
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### 4.5.2 Consolidado de qualidade de dados (para o dashboard)
+# MAGIC
+# MAGIC Reúne as métricas de "vendas sem cadastro" numa única tabela pequena,
+# MAGIC pensada para alimentar um card de "Qualidade dos Dados" no dashboard --
+# MAGIC dá visibilidade contínua ao problema de cadastro incompleto, sem misturar
+# MAGIC com os rankings de negócio.
+
+# COMMAND ----------
+
+qtd_vendas_produto_nao_cadastrado = df_gold_fact_sales.filter(F.col("product_id") == -1).count()
+qtd_vendas_vendedor_nao_cadastrado = df_gold_fact_sales.filter(F.col("seller_id") == -1).count()
+total_vendas_gold = df_gold_fact_sales.count()
+
+# ATENÇÃO: somar receita_produto_nao_cadastrado + receita_vendedor_nao_cadastrado
+# diretamente contaria em dobro qualquer venda que tenha AO MESMO TEMPO produto
+# E vendedor não cadastrados. Por isso calculamos a receita/contagem "sem
+# cadastro completo" com um filtro OR direto sobre o fato, garantindo que cada
+# venda problemática seja contada uma única vez, mesmo que viole os dois
+# cadastros simultaneamente.
+df_sem_cadastro_completo = df_gold_fact_sales.filter((F.col("product_id") == -1) | (F.col("seller_id") == -1))
+qtd_vendas_sem_cadastro_completo = df_sem_cadastro_completo.count()
+receita_sem_cadastro_completo = (
+    df_sem_cadastro_completo.agg(F.round(F.sum("net_amount"), 2)).collect()[0][0] or 0.0
+)
+
+gold_kpi_qualidade_dados = spark.createDataFrame(
+    [(
+        total_vendas_gold,
+        qtd_vendas_produto_nao_cadastrado,
+        qtd_vendas_vendedor_nao_cadastrado,
+        receita_produto_nao_cadastrado,
+        receita_vendedor_nao_cadastrado,
+        round((qtd_vendas_produto_nao_cadastrado / total_vendas_gold) * 100, 2) if total_vendas_gold else 0,
+        round((qtd_vendas_vendedor_nao_cadastrado / total_vendas_gold) * 100, 2) if total_vendas_gold else 0,
+        qtd_vendas_sem_cadastro_completo,
+        receita_sem_cadastro_completo,
+        round((qtd_vendas_sem_cadastro_completo / total_vendas_gold) * 100, 2) if total_vendas_gold else 0,
+    )],
+    schema=[
+        "total_vendas", "qtd_vendas_produto_nao_cadastrado", "qtd_vendas_vendedor_nao_cadastrado",
+        "receita_produto_nao_cadastrado", "receita_vendedor_nao_cadastrado",
+        "pct_vendas_produto_nao_cadastrado", "pct_vendas_vendedor_nao_cadastrado",
+        "qtd_vendas_sem_cadastro_completo", "receita_sem_cadastro_completo",
+        "pct_vendas_sem_cadastro_completo",
+    ],
+)
+gold_kpi_qualidade_dados.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{CATALOG}.{SCHEMA}.gold_kpi_qualidade_dados")
+display(gold_kpi_qualidade_dados)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ### 4.6 Vendedores recorrentes vs. novos
 # MAGIC
 # MAGIC **Premissa assumida:** como o dataset cobre um único ano (2025) sem
@@ -387,7 +439,7 @@ display(gold_kpi_vendedores_inativos)
 
 # COMMAND ----------
 
-vendedores_ativos = df_dim_seller.filter(F.col("seller_id") != -1).select("seller_id", "seller_name")
+vendedores_ativos = df_dim_seller.filter(F.col("seller_id") != -1).select("seller_id")
 todos_periodos = df_gold_dim_time.select("year", "month")
 
 # Grade completa: todo vendedor cruzado com todo período do calendário
@@ -492,7 +544,7 @@ tabelas_gold = [
     "gold_kpi_top5_vendedores_receita", "gold_kpi_vendedores_recorrentes_novos",
     "gold_kpi_pct_cancelados", "gold_kpi_faturamento_estado",
     "gold_kpi_vendedores_inativos", "gold_kpi_variacao_mensal_vendedor",
-    "gold_kpi_quedas_consecutivas",
+    "gold_kpi_quedas_consecutivas", "gold_kpi_qualidade_dados",
 ]
 
 print("Tabelas Gold disponíveis para consumo analítico:")
