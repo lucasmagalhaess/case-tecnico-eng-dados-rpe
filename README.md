@@ -186,8 +186,74 @@ Premissas assumidas em perguntas ambíguas (ex.: definição de "recorrente",
 data de referência para inatividade) estão documentadas como comentários no
 próprio notebook, na célula correspondente.
 
+## Testes e validações realizadas
+
+### Testes automatizados (assert nos notebooks)
+
+**Bronze:** contagem de arquivos processados (venda + dimensão + quarentena) bate
+com o total do Volume; nenhuma tabela Bronze fica vazia.
+
+**Silver:** zero duplicidade remanescente na chave composta
+`seller_id+year+month+order_id`; zero nulos em colunas essenciais; nenhum
+`seller_id`/`product_id` órfão (sem correspondência na dimensão real nem no
+registro sentinela `-1`); soma de receita idêntica entre Bronze (deduplicada
+por chave única) e Silver, garantindo que só duplicata real foi removida.
+
+### Validações manuais de investigação
+
+Além dos `assert` automatizados, alguns achados só vieram de inspecionar os
+dados manualmente em vez de confiar cegamente no resultado do código:
+
+- **`order_id` não é chave única global** — descoberto ao inspecionar
+  visualmente pedidos "duplicados": 53 dos 192 eram, na verdade, vendas
+  distintas de meses diferentes com número de pedido coincidente. Corrigiu a
+  estratégia de deduplicação de `order_id` isolado para chave composta.
+- **Dimensões maiores do que a amostra inicial sugeria** — `dim_seller` tem 5
+  registros (não 3) e `dim_product` tem 48 (não 3); a suposição inicial,
+  baseada em `nrows=3`, subestimava a cobertura real de cadastro.
+- **`product_id` tipado como string** — identificado pela ordenação
+  lexicográfica incorreta (`1, 11, 12...`) na inspeção da dimensão.
+- **Valores malformados em colunas numéricas** (strings vazias) — descoberto
+  ao trocar `cast` por `try_cast` e quantificar os `null` resultantes.
+- **Dupla contagem na métrica de qualidade do dashboard** — a soma de
+  "receita produto não cadastrado" + "receita vendedor não cadastrado"
+  contava em dobro as vendas onde os dois problemas coexistem na mesma linha
+  (31 vendas). Corrigido para um filtro `OR` único sobre o fato.
+
+### Testes de idempotência e comportamento incremental
+
+- Execução do Job de orquestração múltiplas vezes seguidas, confirmando via
+  `SELECT COUNT(*)` que a contagem de linhas na Silver não muda entre
+  execuções (nenhuma duplicação por reprocessamento).
+- Execução da Silver duas vezes sem novos dados na Bronze, confirmando que o
+  watermark reconhece "nada novo" e interrompe o processamento
+  (`dbutils.notebook.exit`) sem tocar nas tabelas.
+
+### Validação do dashboard contra o banco
+
+Após a implementação visual, cada métrica exibida no dashboard foi conferida
+por uma query SQL independente direto no Databricks (receita total, soma por
+estado, ticket médio, contagem de pedidos, percentual de cancelados, datas de
+última venda por vendedor) — todos os valores bateram exatamente, sem
+divergência.
+
 ## Dashboard
 
-Dashboard construído em **Google Apps Script**, conectado às tabelas
-`gold_kpi_*` via API REST do Databricks (SQL Statement Execution API). Ver
-detalhes e instruções de configuração em `dashboard/`.
+Dashboard construído como um **Web App em Google Apps Script**
+(`dashboard/Code.gs` + `dashboard/Index.html`), com identidade visual própria
+alinhada à marca RPE (paleta azul-marinho e laranja, tipografia Sora/Inter/IBM
+Plex Mono).
+
+**Arquitetura:** o backend (`Code.gs`) consulta a **SQL Statement Execution
+API** do Databricks sob demanda (botão "Atualizar dados"), lendo diretamente
+das tabelas `gold_kpi_*`; o front-end renderiza os dados em 4 abas (Visão
+Geral, Produtos, Vendedores, Regional & Qualidade), cobrindo as 11 perguntas
+analíticas do enunciado mais um painel de qualidade de dados.
+
+**Configuração:** o token de acesso ao Databricks é armazenado via
+`PropertiesService` (Propriedades do script), não commitado no código-fonte.
+Instruções completas de setup estão comentadas no topo de `dashboard/Code.gs`.
+
+**Validação:** todas as métricas exibidas foram conferidas por query SQL
+direta no Databricks após a implementação (ver seção de Testes acima) —
+nenhuma divergência encontrada na validação final.
