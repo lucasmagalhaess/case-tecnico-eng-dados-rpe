@@ -368,6 +368,15 @@
           <div class="kpi-label">receita total sem cadastro completo</div>
         </div>
       </div>
+
+      <section class="eyebrow">Vendedores para regularizar cadastro</section>
+      <p style="font-size:12.5px;color:var(--muted);margin:-4px 0 16px;">
+        seller_id identificado no nome do arquivo de origem, mas ausente do
+        cadastro (dim_seller) — ação para o time responsável.
+      </p>
+      <div class="card">
+        <table id="tabela-vendedores-sem-cadastro"></table>
+      </div>
     </div>
   </main>
 
@@ -591,6 +600,13 @@
       document.getElementById('q-vendedor-pct').textContent = fmtPct(q.pct_vendas_vendedor_nao_cadastrado);
       document.getElementById('q-receita-nao-cadastrado').textContent =
         fmtBRL(Number(q.receita_sem_cadastro_completo || 0));
+
+      renderTabela('tabela-vendedores-sem-cadastro',
+        ['seller_id (no arquivo)', 'Qtd. vendas', 'Receita afetada'],
+        dados.vendedoresSemCadastro.map((v) => [
+          v.seller_id_original, fmtNum(v.qtd_vendas), fmtBRL(v.receita_afetada),
+        ]),
+        [false, true, true]);
     }
 
     // ---------- Helpers de tabela ----------

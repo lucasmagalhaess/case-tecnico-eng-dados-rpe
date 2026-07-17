@@ -321,6 +321,39 @@ display(gold_kpi_qualidade_dados)
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ### 4.5.3 Identificação dos vendedores sem cadastro (ação para o time de cadastro)
+# MAGIC
+# MAGIC A métrica agregada acima (29,88% das vendas) não diz **qual** `seller_id`
+# MAGIC está sem cadastro -- informação essencial para o time responsável agir na
+# MAGIC causa raiz. Recuperamos o `seller_id` original a partir do nome do arquivo
+# MAGIC (`source_file`), preservado mesmo após a reconciliação para -1.
+# MAGIC
+# MAGIC **Limitação identificada:** o mesmo não é possível para `product_id` sem
+# MAGIC cadastro -- diferente do vendedor, o produto não é codificado no nome do
+# MAGIC arquivo, e o `product_id` original é sobrescrito pela reconciliação sem
+# MAGIC ser preservado em uma coluna à parte na Silver atual. Registrado como
+# MAGIC melhoria futura: manter uma coluna `product_id_original` no fato,
+# MAGIC paralela à `product_id` reconciliada.
+
+# COMMAND ----------
+
+gold_kpi_vendedores_sem_cadastro = (
+    df_gold_fact_sales
+    .filter(F.col("seller_id") == -1)
+    .withColumn("seller_id_original", F.regexp_extract(F.col("source_file"), r"^(\d+)_", 1).cast("int"))
+    .groupBy("seller_id_original")
+    .agg(
+        F.count("*").alias("qtd_vendas"),
+        F.round(F.sum("net_amount"), 2).alias("receita_afetada"),
+    )
+    .orderBy(F.col("receita_afetada").desc())
+)
+gold_kpi_vendedores_sem_cadastro.write.format("delta").mode("overwrite").option("overwriteSchema", "true").saveAsTable(f"{CATALOG}.{SCHEMA}.gold_kpi_vendedores_sem_cadastro")
+display(gold_kpi_vendedores_sem_cadastro)
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ### 4.6 Vendedores recorrentes vs. novos
 # MAGIC
 # MAGIC **Premissa assumida:** como o dataset cobre um único ano (2025) sem
@@ -545,6 +578,7 @@ tabelas_gold = [
     "gold_kpi_pct_cancelados", "gold_kpi_faturamento_estado",
     "gold_kpi_vendedores_inativos", "gold_kpi_variacao_mensal_vendedor",
     "gold_kpi_quedas_consecutivas", "gold_kpi_qualidade_dados",
+    "gold_kpi_vendedores_sem_cadastro",
 ]
 
 print("Tabelas Gold disponíveis para consumo analítico:")

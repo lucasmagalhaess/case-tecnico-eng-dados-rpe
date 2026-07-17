@@ -141,6 +141,9 @@ function getDashboardData() {
       `SELECT * FROM ${t('gold_kpi_quedas_consecutivas')} ORDER BY meses_consecutivos_em_queda DESC`
     );
     const qualidadeDados = runDatabricksQuery(`SELECT * FROM ${t('gold_kpi_qualidade_dados')}`);
+    const vendedoresSemCadastro = runDatabricksQuery(
+      `SELECT * FROM ${t('gold_kpi_vendedores_sem_cadastro')} ORDER BY receita_afetada DESC`
+    );
 
     return {
       ok: true,
@@ -157,6 +160,7 @@ function getDashboardData() {
       variacaoMensalVendedor,
       quedasConsecutivas,
       qualidadeDados: qualidadeDados[0] || {},
+      vendedoresSemCadastro,
     };
   } catch (erro) {
     return { ok: false, erro: erro.message };

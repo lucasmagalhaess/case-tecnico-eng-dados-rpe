@@ -89,6 +89,18 @@ do que a suposição inicial baseada em amostra.
 não descartar vendas na Gold, aplicado a qualquer `product_id` vendido que não
 conste nos 48 cadastrados.
 
+**Limitação identificada (transparência para o time avaliador):** para
+vendedores sem cadastro, foi possível criar uma tabela de ação
+(`gold_kpi_vendedores_sem_cadastro`) identificando exatamente qual
+`seller_id` precisa ser cadastrado, porque esse valor está codificado no
+**nome do arquivo** (`source_file`), preservado mesmo após a reconciliação
+para `-1`. O mesmo não foi possível para produtos: o `product_id` vem de
+dentro do CSV, não do nome do arquivo, e a coluna é sobrescrita pela versão
+reconciliada (`-1`) sem uma cópia do valor original preservada à parte na
+Silver atual. **Melhoria futura:** manter uma coluna `product_id_original`
+no fato, paralela à `product_id` reconciliada, permitindo a mesma
+rastreabilidade que já existe para vendedor.
+
 ### 4.5 Achados adicionais de qualidade em `dim_product`
 
 **`product_id` como string, não inteiro:** ao ordenar a dimensão por `product_id`,
@@ -144,6 +156,16 @@ remove duplicatas reais dentro do mesmo escopo vendedor+período. A
 sobrevivência entre duplicatas reais continua sendo decidida pelo
 `ingestion_timestamp` mais recente, resolvendo também a idempotência em caso
 de reexecução do pipeline sobre os mesmos arquivos.
+
+**Validação adicional — a regra de "manter só o mais recente" descarta
+transições de status?** Não. Consultamos diretamente a Bronze: para todas as
+combinações `seller_id+year+month+order_id` com mais de 1 cópia, o `status`
+é **idêntico em 100% dos casos** (nenhuma combinação apresentou status
+divergente entre cópias). Isso confirma que as duplicatas observadas na
+prática vêm de reingestão do mesmo arquivo em execuções repetidas do
+pipeline (a Bronze usa `append`), não de um pedido evoluindo de status ao
+longo do tempo — portanto a deduplicação não descarta nenhum histórico de
+mudança de status real.
 
 ## 5. Resumo para apresentação
 
