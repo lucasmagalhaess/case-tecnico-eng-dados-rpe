@@ -118,6 +118,17 @@ As dimensões de vendedor e produto incluem um registro sentinela (`-1`,
 *"unknown member"*, que evita valores nulos em joins e evita perder receita
 real de vendas sem correspondência cadastral.
 
+**Sobre a dimensão de cliente/estado (seção 4 do enunciado):** o dataset
+fornecido não contém nenhum dado de cliente/comprador (não há `customer_id`
+nem informação de endereço nos arquivos de venda) — por isso, uma dimensão
+de cliente não foi criada, já que não haveria dado de origem que a
+sustentasse. O único campo geográfico disponível é `state`, presente em
+`dim_seller.csv` — ou seja, é o **estado de cadastro do vendedor**, não do
+comprador. A métrica "faturamento por estado" deve ser lida como "receita
+atribuída ao estado do vendedor responsável pela venda", não como
+distribuição geográfica de clientes. Essa distinção está sinalizada também
+no rótulo do dashboard.
+
 ## Estratégia incremental
 
 A camada Silver não reprocessa a Bronze inteira a cada execução. Em vez
