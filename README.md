@@ -1,4 +1,4 @@
-# Case Técnico — Engenheiro de Dados Pleno (RPE)
+# Case Técnico — Engenheiro de Dados (RPE)
 
 Pipeline de dados em Databricks (arquitetura medallion) e entrega analítica a
 partir de arquivos de vendas mensais de vendedores, com dados propositalmente
